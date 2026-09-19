@@ -1,0 +1,220 @@
+-- Delta Executor: Pure Card Stealer Hub for Math For KPOP Idols
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
+
+-- ระบบดึง UI ที่ปลอดภัยสำหรับมือถือ (Delta Executor)
+local parentUI = nil
+if gethui then
+    parentUI = gethui()
+else
+    parentUI = game:GetService("CoreGui")
+end
+
+-- ป้องกันเปิดหน้าต่างซ้ำ
+if parentUI:FindFirstChild("CardStealerHub") then
+    parentUI.CardStealerHub:Destroy()
+end
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "CardStealerHub"
+ScreenGui.Parent = parentUI
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+-- 1. ปุ่มวงกลมลอยบนจอ (เปิด-ปิดระบบขโมยการ์ด: สีดำ = ปิด, สีเขียว = เปิด)
+local CircleToggleBtn = Instance.new("TextButton")
+CircleToggleBtn.Name = "CircleToggleBtn"
+CircleToggleBtn.Parent = ScreenGui
+CircleToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+CircleToggleBtn.Position = UDim2.new(0.02, 0, 0.35, 0)
+CircleToggleBtn.Size = UDim2.new(0, 48, 0, 48)
+CircleToggleBtn.Font = Enum.Font.SourceSansBold
+CircleToggleBtn.Text = "➔"
+CircleToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CircleToggleBtn.TextSize = 22
+CircleToggleBtn.Active = true
+CircleToggleBtn.Draggable = true
+Instance.new("UICorner", CircleToggleBtn).CornerRadius = UDim.new(1, 0)
+
+-- 2. หน้าต่างหลักควบคุมระบบขโมยการ์ด
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+MainFrame.BorderSizePixel = 0
+MainFrame.Position = UDim2.new(0.5, -150, 0.5, -110)
+MainFrame.Size = UDim2.new(0, 300, 0, 210)
+MainFrame.Active = true
+MainFrame.Draggable = true
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
+
+-- ส่วนหัว
+local Header = Instance.new("TextLabel")
+Header.Parent = MainFrame
+Header.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+Header.Size = UDim2.new(1, 0, 0, 35)
+Header.Font = Enum.Font.SourceSansBold
+Header.Text = "  Card Stealer Hub"
+Header.TextColor3 = Color3.fromRGB(240, 240, 240)
+Header.TextSize = 14
+Header.TextXAlignment = Enum.TextXAlignment.Left
+Instance.new("UICorner", Header).CornerRadius = UDim.new(0, 10)
+
+-- ปุ่มปิด (X)
+local CloseX = Instance.new("TextButton")
+CloseX.Parent = Header
+CloseX.BackgroundColor3 = Color3.fromRGB(210, 60, 60)
+CloseX.Position = UDim2.new(1, -32, 0.15, 0)
+CloseX.Size = UDim2.new(0, 25, 0, 25)
+CloseX.Font = Enum.Font.SourceSansBold
+CloseX.Text = "X"
+CloseX.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseX.TextSize = 12
+Instance.new("UICorner", CloseX).CornerRadius = UDim.new(0, 6)
+
+CloseX.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+end)
+
+-- ปุ่มเลือกความหายาก / กลายพันธุ์ (Rarity Filter)
+local rarities = {"All (ทั้งหมด)", "Legendary", "Epic", "Shiny", "Gold", "Silver", "Rainbow", "Diamond", "Aurora", "Lunar", "Starlight", "Blossom"}
+local currentRarityIndex = 1
+
+local RarityBtn = Instance.new("TextButton")
+RarityBtn.Parent = MainFrame
+RarityBtn.BackgroundColor3 = Color3.fromRGB(52, 152, 219)
+RarityBtn.Position = UDim2.new(0.1, 0, 0.25, 0)
+RarityBtn.Size = UDim2.new(0.8, 0, 0, 35)
+RarityBtn.Font = Enum.Font.SourceSansBold
+RarityBtn.Text = "เป้าหมาย: " .. rarities[currentRarityIndex]
+RarityBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+RarityBtn.TextSize = 13
+Instance.new("UICorner", RarityBtn).CornerRadius = UDim.new(0, 6)
+
+RarityBtn.MouseButton1Click:Connect(function()
+    currentRarityIndex = currentRarityIndex + 1
+    if currentRarityIndex > #rarities then
+        currentRarityIndex = 1
+    end
+    RarityBtn.Text = "เป้าหมาย: " .. rarities[currentRarityIndex]
+end)
+
+-- ปุ่มวาร์ปกลับแปลงของฉัน (เผื่อต้องการกดเช็กฐาน)
+local BaseBtn = Instance.new("TextButton")
+BaseBtn.Parent = MainFrame
+BaseBtn.BackgroundColor3 = Color3.fromRGB(155, 89, 182)
+BaseBtn.Position = UDim2.new(0.1, 0, 0.45, 0)
+BaseBtn.Size = UDim2.new(0.8, 0, 0, 35)
+BaseBtn.Font = Enum.Font.SourceSansBold
+BaseBtn.Text = "วาร์ปกลับแปลงของฉัน"
+BaseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+BaseBtn.TextSize = 13
+Instance.new("UICorner", BaseBtn).CornerRadius = UDim.new(0, 6)
+
+BaseBtn.MouseButton1Click:Connect(function()
+    pcall(function()
+        for _, plot in pairs(Workspace.Plots:GetChildren()) do
+            if plot:FindFirstChild("Base") and plot:GetAttribute("PlotOwner") == LocalPlayer.UserId then
+                LocalPlayer.Character.HumanoidRootPart.CFrame = plot.Base.CFrame + Vector3.new(0, 5, 0)
+                break
+            end
+        end
+    end)
+end)
+
+-- ป้ายแสดงสถานะ
+local StatusLabel = Instance.new("TextLabel")
+StatusLabel.Parent = MainFrame
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.Position = UDim2.new(0.1, 0, 0.68, 0)
+StatusLabel.Size = UDim2.new(0.8, 0, 0, 30)
+StatusLabel.Font = Enum.Font.SourceSansBold
+StatusLabel.Text = "กดปุ่มวงกลมซ้ายจอเพื่อเริ่ม/ปิด"
+StatusLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+StatusLabel.TextSize = 11
+
+-- ระบบขโมยการ์ด (ทำงานเมื่อกดปุ่มวงกลมลอย)
+local isStealingRunning = false
+CircleToggleBtn.MouseButton1Click:Connect(function()
+    isStealingRunning = not isStealingRunning
+    if isStealingRunning then
+        CircleToggleBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113) -- เปลี่ยนเป็นสีเขียวเมื่อเปิด
+        StatusLabel.Text = "สถานะ: กำลังขโมยการ์ด (เปิด)"
+        StatusLabel.TextColor3 = Color3.fromRGB(46, 204, 113)
+        
+        task.spawn(function()
+            while isStealingRunning do
+                pcall(function()
+                    local basePos = nil
+                    for _, plot in pairs(Workspace.Plots:GetChildren()) do
+                        if plot:FindFirstChild("Base") and plot:GetAttribute("PlotOwner") == LocalPlayer.UserId then
+                            basePos = plot.Base.CFrame + Vector3.new(0, 5, 0)
+                            break
+                        end
+                    end
+                    
+                    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                    if hrp and basePos then
+                        local targetFilter = rarities[currentRarityIndex]
+                        local collected = false
+                        
+                        for _, obj in pairs(Workspace:GetDescendants()) do
+                            if not isStealingRunning then break end
+                            if obj:IsA("ProximityPrompt") then
+                                -- ป้องกันไม่ให้ไปโดนปุ่ม Robux หรือ Pass
+                                local actionText = string.lower(obj.ActionText or "")
+                                local objectText = string.lower(obj.ObjectText or "")
+                                local parentName = string.lower(obj.Parent and obj.Parent.Name or "")
+                                
+                                local isRobuxPrompt = (actionText:find("buy") or actionText:find("pass") or actionText:find("robux") or 
+                                                       objectText:find("buy") or objectText:find("pass") or objectText:find("robux") or
+                                                       parentName:find("pass") or parentName:find("gamepass"))
+                                
+                                if not isRobuxPrompt then
+                                    local parentModel = obj.Parent and obj.Parent.Parent
+                                    local match = true
+                                    
+                                    if not targetFilter:find("All") then
+                                        match = false
+                                        if parentModel then
+                                            local rAttr = parentModel:GetAttribute("Rarity") or parentModel:GetAttribute("Mutation") or ""
+                                            if tostring(rAttr):lower():find(targetFilter:lower()) or parentModel.Name:lower():find(targetFilter:lower()) then
+                                                match = true
+                                            end
+                                        end
+                                    end
+                                    
+                                    if match then
+                                        local targetPart = obj.Parent
+                                        if targetPart and targetPart:IsA("BasePart") then
+                                            -- 1. วาร์ปไปหาการ์ด
+                                            hrp.CFrame = targetPart.CFrame + Vector3.new(0, 3, 0)
+                                            task.wait(0.2)
+                                            -- 2. กดเก็บ
+                                            fireproximityprompt(obj)
+                                            task.wait(0.2)
+                                            -- 3. วาร์ปกลับฐานทันที
+                                            hrp.CFrame = basePos
+                                            collected = true
+                                            task.wait(0.5)
+                                            break
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                        
+                        if not collected then
+                            task.wait(1)
+                        end
+                    end
+                end)
+                task.wait(0.3)
+            end
+        end)
+    else
+        CircleToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30) -- เปลี่ยนกลับเป็นสีดำเมื่อปิด
+        StatusLabel.Text = "สถานะ: ปิดการทำงาน"
+        StatusLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+    end
+end)
