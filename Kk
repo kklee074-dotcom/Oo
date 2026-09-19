@@ -1,0 +1,243 @@
+-- ==========================================
+-- สคริปต์ KPOP Hub (Instant Steal + Auto Money + Auto Best Card)
+-- ==========================================
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local VirtualUser = game:GetService("VirtualUser")
+local CoreGui = game:GetService("CoreGui")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+
+local autoStealActive = false
+local autoCollectMoneyActive = false
+local autoBestCardActive = false
+
+player.Idled:Connect(function()
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
+end)
+
+RunService.Stepped:Connect(function()
+    if autoStealActive and character then
+        for _, part in pairs(character:GetDescendants()) do
+            if part:IsA("BasePart") and part.CanCollide then
+                part.CanCollide = false
+            end
+        end
+    end
+end)
+
+local function interact(obj)
+    if obj:IsA("ProximityPrompt") then
+        fireproximityprompt(obj)
+    elseif obj:IsA("ClickDetector") then
+        fireclickdetector(obj)
+    end
+end
+
+-- ระบบเก็บเงินออโต้
+local function doAutoCollectMoney()
+    while autoCollectMoneyActive do
+        character = player.Character or player.CharacterAdded:Wait()
+        local root = character:FindFirstChild("HumanoidRootPart")
+        
+        if root and firetouchinterest then
+            for _, obj in pairs(workspace:GetDescendants()) do
+                if obj:IsA("BasePart") and (obj.Name == "AutoCollect" or obj.Name == "Touch") then
+                    if obj:IsDescendantOf(workspace:FindFirstChild("Plot_" .. player.Name) or workspace) then
+                        firetouchinterest(root, obj, 0)
+                        task.wait(0.05)
+                        firetouchinterest(root, obj, 1)
+                    end
+                end
+            end
+        end
+        task.wait(2)
+    end
+end
+
+-- ระบบ Instant Steal แบบกวาดเรียบ
+local function doAutoSteal()
+    while autoStealActive do
+        character = player.Character or player.CharacterAdded:Wait()
+        local root = character:FindFirstChild("HumanoidRootPart")
+        
+        if root then
+            for _, obj in pairs(workspace:GetDescendants()) do
+                if not autoStealActive then break end
+                
+                if obj:IsA("ProximityPrompt") or obj:IsA("ClickDetector") then
+                    local parentPart = obj.Parent
+                    if parentPart and (parentPart:IsA("BasePart") or parentPart:IsA("Model")) then
+                        
+                        local isInOtherPlot = false
+                        local ancestor = parentPart.Parent
+                        while ancestor and ancestor ~= workspace do
+                            if string.find(ancestor.Name, "Plot_") and ancestor.Name ~= ("Plot_" .. player.Name) then
+                                isInOtherPlot = true
+                                break
+                            end
+                            ancestor = ancestor.Parent
+                        end
+                        
+                        if not isInOtherPlot then
+                            local originalCFrame = root.CFrame
+                            local targetCF = parentPart:IsA("Model") and parentPart:GetPivot() or parentPart.CFrame
+                            
+                            root.CFrame = targetCF + Vector3.new(0, 2, 0)
+                            task.wait(0.05)
+                            
+                            for i = 1, 4 do
+                                interact(obj)
+                                task.wait(0.05)
+                            end
+                            
+                            root.CFrame = originalCFrame
+                            task.wait(0.1)
+                        end
+                    end
+                end
+            end
+        end
+        task.wait(0.3)
+    end
+end
+
+-- ระบบจำลองการเลือกและวางการ์ดที่ดีที่สุดลงฐาน
+local function doAutoBestCard()
+    while autoBestCardActive do
+        pcall(function()
+            -- ค้นหาจุดสล็อตหรือแท่นวางการ์ดในฐานของผู้เล่น
+            local myPlot = workspace:FindFirstChild("Plot_" .. player.Name)
+            if myPlot then
+                for _, obj in pairs(myPlot:GetDescendants()) do
+                    if obj:IsA("ProximityPrompt") and (string.find(string.lower(obj.Name), "card") or string.find(string.lower(obj.Name), "place") or string.find(string.lower(obj.Parent.Name), "slot")) then
+                        local originalCFrame = character.HumanoidRootPart.CFrame
+                        character.HumanoidRootPart.CFrame = obj.Parent:IsA("BasePart") and obj.Parent.CFrame or obj.Parent:GetPivot()
+                        task.wait(0.1)
+                        fireproximityprompt(obj)
+                        task.wait(0.1)
+                        character.HumanoidRootPart.CFrame = originalCFrame
+                    end
+                end
+            end
+        end)
+        task.wait(5)
+    end
+end
+
+-- ==========================================
+-- UI เมนูหลัก (พร้อมปุ่มวงกลมเปิด/ปิด)
+-- ==========================================
+if CoreGui:FindFirstChild("KPOPFullHub") then
+    CoreGui.KPOPFullHub:Destroy()
+end
+
+local ScreenGui = Instance.new("ScreenGui", CoreGui)
+ScreenGui.Name = "KPOPFullHub"
+ScreenGui.ResetOnSpawn = false
+
+local ToggleCircle = Instance.new("TextButton", ScreenGui)
+ToggleCircle.Size = UDim2.new(0, 50, 0, 50)
+ToggleCircle.Position = UDim2.new(0, 15, 0.4, 0)
+ToggleCircle.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+ToggleCircle.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleCircle.Text = "✨"
+ToggleCircle.TextSize = 22
+ToggleCircle.Font = Enum.Font.GothamBold
+ToggleCircle.Active = true
+ToggleCircle.Draggable = true
+Instance.new("UICorner", ToggleCircle).CornerRadius = UDim.new(1, 0)
+
+local MainFrame = Instance.new("Frame", ScreenGui)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+MainFrame.Position = UDim2.new(0, 75, 0.4, 0)
+MainFrame.Size = UDim2.new(0, 180, 0, 175)
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Visible = false
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
+
+ToggleCircle.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+    if MainFrame.Visible then
+        ToggleCircle.BackgroundColor3 = Color3.fromRGB(85, 255, 85)
+    else
+        ToggleCircle.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+    end
+end)
+
+-- ปุ่ม Auto Money
+local MoneyBtn = Instance.new("TextButton", MainFrame)
+MoneyBtn.Size = UDim2.new(1, -16, 0, 35)
+MoneyBtn.Position = UDim2.new(0, 8, 0, 15)
+MoneyBtn.Text = "💲 Auto Money : OFF"
+MoneyBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+MoneyBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+MoneyBtn.Font = Enum.Font.GothamBold
+MoneyBtn.TextSize = 12
+Instance.new("UICorner", MoneyBtn).CornerRadius = UDim.new(0, 6)
+
+MoneyBtn.MouseButton1Click:Connect(function()
+    autoCollectMoneyActive = not autoCollectMoneyActive
+    if autoCollectMoneyActive then
+        MoneyBtn.Text = "💲 Auto Money : ON"
+        MoneyBtn.BackgroundColor3 = Color3.fromRGB(255, 170, 0)
+        MoneyBtn.TextColor3 = Color3.fromRGB(25, 25, 30)
+        task.spawn(doAutoCollectMoney)
+    else
+        MoneyBtn.Text = "💲 Auto Money : OFF"
+        MoneyBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+        MoneyBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    end
+end)
+
+-- ปุ่ม Instant Steal
+local StartBtn = Instance.new("TextButton", MainFrame)
+StartBtn.Size = UDim2.new(1, -16, 0, 35)
+StartBtn.Position = UDim2.new(0, 8, 0, 60)
+StartBtn.Text = "▶ Instant Steal : OFF"
+StartBtn.BackgroundColor3 = Color3.fromRGB(255, 85, 85)
+StartBtn.TextColor3 = Color3.fromRGB(25, 25, 30)
+StartBtn.Font = Enum.Font.GothamBold
+StartBtn.TextSize = 12
+Instance.new("UICorner", StartBtn).CornerRadius = UDim.new(0, 6)
+
+StartBtn.MouseButton1Click:Connect(function()
+    autoStealActive = not autoStealActive
+    if autoStealActive then
+        StartBtn.Text = "⏸ Instant Steal : ON"
+        StartBtn.BackgroundColor3 = Color3.fromRGB(85, 255, 85)
+        task.spawn(doAutoSteal)
+    else
+        StartBtn.Text = "▶ Instant Steal : OFF"
+        StartBtn.BackgroundColor3 = Color3.fromRGB(255, 85, 85)
+    end
+end)
+
+-- ปุ่ม Auto Best Card (วางการ์ดลงฐาน)
+local CardBtn = Instance.new("TextButton", MainFrame)
+CardBtn.Size = UDim2.new(1, -16, 0, 35)
+CardBtn.Position = UDim2.new(0, 8, 0, 105)
+CardBtn.Text = "🃏 Auto Best Card : OFF"
+CardBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+CardBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+CardBtn.Font = Enum.Font.GothamBold
+CardBtn.TextSize = 11
+Instance.new("UICorner", CardBtn).CornerRadius = UDim.new(0, 6)
+
+CardBtn.MouseButton1Click:Connect(function()
+    autoBestCardActive = not autoBestCardActive
+    if autoBestCardActive then
+        CardBtn.Text = "🃏 Auto Best Card : ON"
+        CardBtn.BackgroundColor3 = Color3.fromRGB(85, 170, 255)
+        CardBtn.TextColor3 = Color3.fromRGB(25, 25, 30)
+        task.spawn(doAutoBestCard)
+    else
+        CardBtn.Text = "🃏 Auto Best Card : OFF"
+        CardBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+        CardBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    end
+end)
