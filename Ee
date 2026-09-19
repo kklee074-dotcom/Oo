@@ -1,0 +1,441 @@
+-- ==========================================
+-- KPOP Hub: Wind UI Style (Absolute Safe Own Plot)
+-- เกม: [Updated] Steal from KPOP Idols!
+-- ==========================================
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local VirtualUser = game:GetService("VirtualUser")
+local CoreGui = game:GetService("CoreGui")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+
+local autoStealActive = false
+local autoCollectMoneyActive = false
+local autoUnlockPlotActive = false
+local selectedFilters = {}
+
+local filterList = {
+    "Sugar", "Meme", "Secret", "Divine", "Mythical", "Legendary", "Epic", "Rare", "Uncommon", "Common",
+    "Concept", "Autumn", "Felix", "Easter", "Fallen", "School", "Signed", "Galactic", "Eclipse", 
+    "Cyberpunk", "Desert", "Elemental", "Prism", "Exclusive", "Collector", "Heaven", "Overdrive", 
+    "Sleeping", "Summer", "Front Page", "Brazil", "World Cup", "Fusion"
+}
+
+player.Idled:Connect(function()
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
+end)
+
+RunService.Stepped:Connect(function()
+    if autoStealActive and character then
+        for _, part in pairs(character:GetDescendants()) do
+            if part:IsA("BasePart") and part.CanCollide then
+                part.CanCollide = false
+            end
+        end
+    end
+end)
+
+local function interact(obj)
+    if obj:IsA("ProximityPrompt") then
+        fireproximityprompt(obj)
+    elseif obj:IsA("ClickDetector") then
+        fireclickdetector(obj)
+    end
+end
+
+-- ฟังก์ชันหาบ้านของเรา
+local function getMyPlot()
+    for _, plot in pairs(workspace:GetChildren()) do
+        if string.find(string.lower(plot.Name), "plot") then
+            -- เช็กว่ามีชื่อเรา หรือมีชิ้นส่วนที่เป็นของตัวเราอยู่ใน Plot นั้น
+            if string.find(plot.Name, player.Name) then
+                return plot
+            end
+            for _, desc in pairs(plot:GetDescendants()) do
+                if desc.Name == player.Name or (desc:IsA("StringValue") and desc.Value == player.Name) then
+                    return plot
+                end
+            end
+        end
+    end
+    return nil
+end
+
+-- ระบบเก็บเงินออโต้ (ทำเฉพาะในบ้านตัวเอง)
+local function doAutoCollectMoney()
+    while autoCollectMoneyActive do
+        character = player.Character or player.CharacterAdded:Wait()
+        local root = character:FindFirstChild("HumanoidRootPart")
+        local myPlot = getMyPlot()
+        
+        if root and firetouchinterest and myPlot then
+            for _, obj in pairs(myPlot:GetDescendants()) do
+                if obj:IsA("BasePart") and (obj.Name == "AutoCollect" or obj.Name == "Touch" or string.find(string.lower(obj.Name), "money")) then
+                    firetouchinterest(root, obj, 0)
+                    task.wait(0.05)
+                    firetouchinterest(root, obj, 1)
+                end
+            end
+        end
+        task.wait(2)
+    end
+end
+
+-- ระบบปลดล็อคฐานออโต้ (ทำเฉพาะในบ้านตัวเอง)
+local function doAutoUnlockPlot()
+    while autoUnlockPlotActive do
+        pcall(function()
+            character = player.Character or player.CharacterAdded:Wait()
+            local root = character:FindFirstChild("HumanoidRootPart")
+            local myPlot = getMyPlot()
+            
+            local leaderstats = player:FindFirstChild("leaderstats")
+            local playerMoney = 0
+            if leaderstats then
+                local cash = leaderstats:FindFirstChild("Cash") or leaderstats:FindFirstChild("Money") or leaderstats:FindFirstChild("Coins")
+                if cash then playerMoney = cash.Value end
+            end
+            
+            if root and myPlot and firetouchinterest then
+                for _, obj in pairs(myPlot:GetDescendants()) do
+                    if not autoUnlockPlotActive then break end
+                    
+                    if obj:IsA("BasePart") and (string.find(string.lower(obj.Name), "button") or string.find(string.lower(obj.Name), "unlock") or string.find(string.lower(obj.Name), "buy") or obj.Name == "Touch") then
+                        local cost = obj:GetAttribute("Cost") or obj:GetAttribute("Price")
+                        if not cost and obj.Parent then
+                            cost = obj.Parent:GetAttribute("Cost") or obj.Parent:GetAttribute("Price")
+                        end
+                        
+                        if cost and playerMoney < cost then
+                            continue
+                        end
+                        
+                        local originalCFrame = root.CFrame
+                        root.CFrame = obj.CFrame + Vector3.new(0, 2, 0)
+                        task.wait(0.05)
+                        firetouchinterest(root, obj, 0)
+                        task.wait(0.05)
+                        firetouchinterest(root, obj, 1)
+                        task.wait(0.1)
+                        root.CFrame = originalCFrame
+                        task.wait(0.5)
+                    end
+                end
+            end
+        end)
+        task.wait(3)
+    end
+end
+
+-- ระบบ Instant Steal (ตัดบ้านตัวเองออกอย่างเด็ดขาดด้วยการเช็กระยะห่างและตำแหน่งพิกัด)
+local function doAutoSteal()
+    while autoStealActive do
+        character = player.Character or player.CharacterAdded:Wait()
+        local root = character:FindFirstChild("HumanoidRootPart")
+        local myPlot = getMyPlot()
+        
+        if root then
+            for _, obj in pairs(workspace:GetDescendants()) do
+                if not autoStealActive then break end
+                
+                if obj:IsA("ProximityPrompt") or obj:IsA("ClickDetector") then
+                    local parentPart = obj.Parent
+                    if parentPart and (parentPart:IsA("BasePart") or parentPart:IsA("Model")) then
+                        
+                        -- เช็กว่าวัตถุนี้อยู่ในบ้านตัวเองหรือไม่ (ถ้าอยู่ในบ้านตัวเอง ข้ามทันที ห้ามแตะ!)
+                        local isInsideMyPlot = false
+                        if myPlot then
+                            if parentPart:IsDescendantOf(myPlot) then
+                                isInsideMyPlot = true
+                            end
+                        end
+                        
+                        -- เช็กระยะห่างจากจุดศูนย์กลางบ้านตัวเอง (ป้องกันกรณีของตกอยู่ใกล้บ้านตัวเอง)
+                        local targetPos = parentPart:IsA("Model") and parentPart:GetPivot().Position or parentPart.Position
+                        if myPlot then
+                            local plotCenter = myPlot:IsA("Model") and myPlot:GetPivot().Position or (myPlot:IsA("BasePart") and myPlot.Position or nil)
+                            if plotCenter and (targetPos - plotCenter).Magnitude < 35 then
+                                isInsideMyPlot = true -- ถ้าใกล้บ้านเราเกินไป ให้มองว่าเป็นของในบ้าน
+                            end
+                        end
+                        
+                        if not isInsideMyPlot then
+                            -- ตรวจสอบฟิลเตอร์ระดับการ์ด
+                            local hasAnyFilter = false
+                            for _, v in pairs(selectedFilters) do 
+                                if v then hasAnyFilter = true break end 
+                            end
+                            
+                            local matchFilter = false
+                            if not hasAnyFilter then
+                                matchFilter = true
+                            else
+                                local searchTarget = parentPart.Name
+                                if parentPart.Parent then searchTarget = searchTarget .. " " .. parentPart.Parent.Name end
+                                
+                                for _, descendant in pairs(parentPart:GetDescendants()) do
+                                    if descendant:IsA("TextLabel") or descendant:IsA("StringValue") then
+                                        searchTarget = searchTarget .. " " .. tostring(descendant.Text or descendant.Value)
+                                    end
+                                end
+                                
+                                for filterName, isSelected in pairs(selectedFilters) do
+                                    if isSelected then
+                                        if string.find(string.lower(searchTarget), string.lower(filterName)) then
+                                            matchFilter = true
+                                            break
+                                        end
+                                    end
+                                end
+                            end
+                            
+                            if matchFilter then
+                                local originalCFrame = root.CFrame
+                                local targetCF = parentPart:IsA("Model") and parentPart:GetPivot() or parentPart.CFrame
+                                
+                                root.CFrame = targetCF + Vector3.new(0, 2, 0)
+                                task.wait(0.05)
+                                
+                                for i = 1, 4 do
+                                    interact(obj)
+                                    task.wait(0.05)
+                                end
+                                
+                                root.CFrame = originalCFrame
+                                task.wait(0.1)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        task.wait(0.3)
+    end
+end
+
+-- ==========================================
+-- UI Creation (Wind UI Dark Theme Style)
+-- ==========================================
+if CoreGui:FindFirstChild("KPOPWindHub") then
+    CoreGui.KPOPWindHub:Destroy()
+end
+
+local ScreenGui = Instance.new("ScreenGui", CoreGui)
+ScreenGui.Name = "KPOPWindHub"
+ScreenGui.ResetOnSpawn = false
+
+local ToggleCircle = Instance.new("TextButton", ScreenGui)
+ToggleCircle.Size = UDim2.new(0, 48, 0, 48)
+ToggleCircle.Position = UDim2.new(0, 15, 0.35, 0)
+ToggleCircle.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+ToggleCircle.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleCircle.Text = "⚙️"
+ToggleCircle.TextSize = 20
+ToggleCircle.Font = Enum.Font.GothamBold
+ToggleCircle.Active = true
+ToggleCircle.Draggable = true
+Instance.new("UICorner", ToggleCircle).CornerRadius = UDim.new(1, 0)
+
+local MainFrame = Instance.new("Frame", ScreenGui)
+MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
+MainFrame.Position = UDim2.new(0, 75, 0.2, 0)
+MainFrame.Size = UDim2.new(0, 360, 0, 240)
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Visible = false
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
+
+ToggleCircle.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+    if MainFrame.Visible then
+        ToggleCircle.BackgroundColor3 = Color3.fromRGB(45, 180, 85)
+    else
+        ToggleCircle.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+    end
+end)
+
+local Sidebar = Instance.new("Frame", MainFrame)
+Sidebar.Size = UDim2.new(0, 110, 1, 0)
+Sidebar.BackgroundColor3 = Color3.fromRGB(24, 24, 30)
+Instance.new("UICorner", Sidebar).CornerRadius = UDim.new(0, 10)
+
+local SidebarCover = Instance.new("Frame", Sidebar)
+SidebarCover.Size = UDim2.new(0, 10, 1, 0)
+SidebarCover.Position = UDim2.new(1, -10, 0, 0)
+SidebarCover.BackgroundColor3 = Color3.fromRGB(24, 24, 30)
+SidebarCover.BorderSizePixel = 0
+
+local AppTitle = Instance.new("TextLabel", Sidebar)
+AppTitle.Size = UDim2.new(1, 0, 0, 40)
+AppTitle.BackgroundTransparency = 1
+AppTitle.Text = "Theme 'Dark'"
+AppTitle.TextColor3 = Color3.fromRGB(200, 200, 210)
+AppTitle.Font = Enum.Font.GothamBold
+AppTitle.TextSize = 12
+
+local Container = Instance.new("Frame", MainFrame)
+Container.Size = UDim2.new(1, -115, 1, 0)
+Container.Position = UDim2.new(0, 115, 0, 0)
+Container.BackgroundTransparency = 1
+
+local pages = {}
+local function createPage()
+    local p = Instance.new("ScrollingFrame", Container)
+    p.Size = UDim2.new(1, -10, 1, -10)
+    p.Position = UDim2.new(0, 0, 0, 5)
+    p.BackgroundTransparency = 1
+    p.ScrollBarThickness = 3
+    p.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 90)
+    p.Visible = false
+    local layout = Instance.new("UIListLayout", p)
+    layout.Padding = UDim.new(0, 6)
+    return p
+end
+
+local pageMain = createPage()
+local pageFilters = createPage()
+local pageSettings = createPage()
+
+pageMain.Visible = true
+
+local function switchPage(targetPage)
+    pageMain.Visible = false
+    pageFilters.Visible = false
+    pageSettings.Visible = false
+    targetPage.Visible = true
+end
+
+local function createTabBtn(name, posY, targetPage)
+    local btn = Instance.new("TextButton", Sidebar)
+    btn.Size = UDim2.new(1, -16, 0, 32)
+    btn.Position = UDim2.new(0, 8, 0, posY)
+    btn.BackgroundColor3 = Color3.fromRGB(32, 32, 40)
+    btn.Text = "  " .. name
+    btn.TextColor3 = Color3.fromRGB(180, 180, 190)
+    btn.Font = Enum.Font.GothamSemibold
+    btn.TextSize = 11
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+    
+    btn.MouseButton1Click:Connect(function()
+        switchPage(targetPage)
+    end)
+end
+
+createTabBtn("🏠 Main", 45, pageMain)
+createTabBtn("🔍 Filters", 85, pageFilters)
+createTabBtn("⚙️ Settings", 125, pageSettings)
+
+local function createToggleRow(parent, text, callback)
+    local frame = Instance.new("Frame", parent)
+    frame.Size = UDim2.new(1, -6, 0, 36)
+    frame.BackgroundColor3 = Color3.fromRGB(28, 28, 35)
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 6)
+    
+    local lbl = Instance.new("TextLabel", frame)
+    lbl.Size = UDim2.new(1, -55, 1, 0)
+    lbl.Position = UDim2.new(0, 10, 0, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = text
+    lbl.TextColor3 = Color3.fromRGB(220, 220, 230)
+    lbl.Font = Enum.Font.GothamMedium
+    lbl.TextSize = 11
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local tBtn = Instance.new("TextButton", frame)
+    tBtn.Size = UDim2.new(0, 42, 0, 22)
+    tBtn.Position = UDim2.new(1, -48, 0.5, -11)
+    tBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+    tBtn.Text = "OFF"
+    tBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
+    tBtn.Font = Enum.Font.GothamBold
+    tBtn.TextSize = 9
+    Instance.new("UICorner", tBtn).CornerRadius = UDim.new(1, 0)
+    
+    local active = false
+    tBtn.MouseButton1Click:Connect(function()
+        active = not active
+        if active then
+            tBtn.BackgroundColor3 = Color3.fromRGB(60, 200, 90)
+            tBtn.TextColor3 = Color3.fromRGB(25, 25, 30)
+            tBtn.Text = "ON"
+        else
+            tBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+            tBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
+            tBtn.Text = "OFF"
+        end
+        callback(active)
+    end)
+end
+
+createToggleRow(pageMain, "💲 Auto Money", function(state)
+    autoCollectMoneyActive = state
+    if state then task.spawn(doAutoCollectMoney) end
+end)
+
+createToggleRow(pageMain, "🚀 Instant Steal", function(state)
+    autoStealActive = state
+    if state then task.spawn(doAutoSteal) end
+end)
+
+createToggleRow(pageMain, "🏗️ Auto Unlock Plot", function(state)
+    autoUnlockPlotActive = state
+    if state then task.spawn(doAutoUnlockPlot) end
+end)
+
+pageMain.CanvasSize = UDim2.new(0, 0, 0, 135)
+
+for _, name in ipairs(filterList) do
+    selectedFilters[name] = false
+    
+    local itemBtn = Instance.new("TextButton", pageFilters)
+    itemBtn.Size = UDim2.new(1, -6, 0, 28)
+    itemBtn.BackgroundColor3 = Color3.fromRGB(28, 28, 35)
+    itemBtn.Text = "  ❌ " .. name
+    itemBtn.TextColor3 = Color3.fromRGB(180, 180, 190)
+    itemBtn.Font = Enum.Font.GothamMedium
+    itemBtn.TextSize = 11
+    itemBtn.TextXAlignment = Enum.TextXAlignment.Left
+    Instance.new("UICorner", itemBtn).CornerRadius = UDim.new(0, 6)
+    
+    itemBtn.MouseButton1Click:Connect(function()
+        if selectedFilters[name] then
+            selectedFilters[name] = false
+            itemBtn.Text = "  ❌ " .. name
+            itemBtn.BackgroundColor3 = Color3.fromRGB(28, 28, 35)
+            itemBtn.TextColor3 = Color3.fromRGB(180, 180, 190)
+        else
+            selectedFilters[name] = true
+            itemBtn.Text = "  ✅ " .. name
+            itemBtn.BackgroundColor3 = Color3.fromRGB(60, 200, 90)
+            itemBtn.TextColor3 = Color3.fromRGB(25, 25, 30)
+        end
+    end)
+end
+pageFilters.CanvasSize = UDim2.new(0, 0, 0, (#filterList * 32) + 10)
+
+local infoLbl = Instance.new("TextLabel", pageSettings)
+infoLbl.Size = UDim2.new(1, -6, 0, 45)
+infoLbl.BackgroundTransparency = 1
+infoLbl.Text = "KPOP Hub v2.7 (Safe Zone Fix)\nMobile Optimized UI"
+infoLbl.TextColor3 = Color3.fromRGB(150, 150, 160)
+infoLbl.Font = Enum.Font.Gotham
+infoLbl.TextSize = 11
+
+local unloadBtn = Instance.new("TextButton", pageSettings)
+unloadBtn.Size = UDim2.new(1, -6, 0, 32)
+unloadBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+unloadBtn.Text = "Unload Hub"
+unloadBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+unloadBtn.Font = Enum.Font.GothamBold
+unloadBtn.TextSize = 11
+Instance.new("UICorner", unloadBtn).CornerRadius = UDim.new(0, 6)
+
+unloadBtn.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+end)
+
+pageSettings.CanvasSize = UDim2.new(0, 0, 0, 90)
