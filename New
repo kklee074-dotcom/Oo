@@ -1,0 +1,173 @@
+-- UI & Auto-Farm Script with Toggle Button for Delta Executor
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- ลบ UI เก่าทิ้งก่อนสร้างใหม่
+if PlayerGui:FindFirstChild("MapAutomationUI") then
+    PlayerGui.MapAutomationUI:Destroy()
+end
+
+-- สร้าง ScreenGui หลัก
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "MapAutomationUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = PlayerGui
+
+-- 1. ปุ่มเปิด/ปิด UI แบบลอยอยู่บนจอ (Floating Toggle Button)
+local ToggleBtn = Instance.new("TextButton")
+ToggleBtn.Size = UDim2.new(0, 45, 0, 45)
+ToggleBtn.Position = UDim2.new(0, 20, 0.4, 0) -- อยู่ริมซ้ายกลางจอ
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+ToggleBtn.Text = "⚙️"
+ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleBtn.TextSize = 20
+ToggleBtn.Font = Enum.Font.SourceSansBold
+ToggleBtn.Draggable = true -- ลากย้ายตำแหน่งปุ่มเปิด-ปิดได้ตามใจชอบ
+ToggleBtn.Parent = ScreenGui
+
+local ToggleCorner = Instance.new("UICorner")
+ToggleCorner.CornerRadius = UDim.new(1, 0) -- ทำเป็นปุ่มวงกลม
+ToggleCorner.Parent = ToggleBtn
+
+-- 2. หน้าต่างเมนูหลัก (Main Frame)
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 260, 0, 180)
+MainFrame.Position = UDim2.new(0.5, -130, 0.4, -90)
+MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Visible = true -- เริ่มต้นให้แสดงผล
+MainFrame.Parent = ScreenGui
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 12)
+MainCorner.Parent = MainFrame
+
+-- แถบหัวข้อ (Title)
+local TitleBar = Instance.new("TextLabel")
+TitleBar.Size = UDim2.new(1, 0, 0, 40)
+TitleBar.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
+TitleBar.Text = "⚡ Map Automation Menu"
+TitleBar.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleBar.TextSize = 16
+TitleBar.Font = Enum.Font.SourceSansBold
+TitleBar.Parent = MainFrame
+
+local TitleCorner = Instance.new("UICorner")
+TitleCorner.CornerRadius = UDim.new(0, 12)
+TitleCorner.Parent = TitleBar
+
+-- ฟังก์ชันสร้างปุ่มเมนูข้างใน
+local function createButton(posY, text, color)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 220, 0, 40)
+    btn.Position = UDim2.new(0.5, -110, 0, posY)
+    btn.BackgroundColor3 = color
+    btn.Text = text
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextSize = 15
+    btn.Font = Enum.Font.SourceSansBold
+    btn.Parent = MainFrame
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = btn
+    
+    return btn
+end
+
+-- ปุ่มฟังก์ชันภายใน
+local BtnSteal = createButton(55, "📦 ขโมยการ์ด & กลับฐานทันที", Color3.fromRGB(0, 170, 127))
+local BtnMoney = createButton(110, "💰 ดูดเงินออโต้: ปิด", Color3.fromRGB(200, 80, 80))
+
+-- --- ระบบควบคุมการเปิด-ปิด UI ---
+ToggleBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+    if MainFrame.Visible then
+        ToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+    else
+        ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 127) -- เปลี่ยนสีปุ่มลอยเมื่อซ่อนเมนู เพื่อให้รู้ว่าปิดอยู่
+    end
+end)
+
+-- --- ระบบการทำงานภายใน (Logic) ---
+local function getMyBase()
+    local basesFolder = Workspace:FindFirstChild("Bases") or Workspace:FindFirstChild("Plots") or Workspace:FindFirstChild("holdbases")
+    if basesFolder then
+        for _, base in ipairs(basesFolder:GetChildren()) do
+            if base:FindFirstChild("Owner") and base.Owner.Value == LocalPlayer then
+                return base
+            end
+        end
+    end
+    return nil
+end
+
+-- กดปุ่มขโมยการ์ด
+BtnSteal.MouseButton1Click:Connect(function()
+    task.spawn(function()
+        BtnSteal.Text = "กำลังขโมย..."
+        local character = LocalPlayer.Character
+        if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+        local hrp = character.HumanoidRootPart
+        
+        local cardsFolder = Workspace:FindFirstChild("Cards") or Workspace:FindFirstChild("Items")
+        local myBase = getMyBase()
+        
+        if cardsFolder and myBase then
+            local dropOffPoint = myBase:FindFirstChild("Core") or myBase:FindFirstChild("DropOff") or myBase:FindFirstChildWhichIsA("BasePart")
+            for _, card in ipairs(cardsFolder:GetChildren()) do
+                local cardPart = card:IsA("BasePart") and card or card.PrimaryPart or card:FindFirstChildWhichIsA("BasePart")
+                if cardPart and dropOffPoint then
+                    hrp.CFrame = cardPart.CFrame + Vector3.new(0, 3, 0)
+                    task.wait(0.1)
+                    hrp.CFrame = dropOffPoint.CFrame + Vector3.new(0, 3, 0)
+                    task.wait(0.1)
+                end
+            end
+        end
+        BtnSteal.Text = "📦 ขโมยการ์ด & กลับฐานทันที"
+    end)
+end)
+
+-- ระบบดูดเงินออโต้
+local autoMoneyActive = false
+BtnMoney.MouseButton1Click:Connect(function()
+    autoMoneyActive = not autoMoneyActive
+    if autoMoneyActive then
+        BtnMoney.Text = "💰 ดูดเงินออโต้: เปิด"
+        BtnMoney.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+        
+        task.spawn(function()
+            while autoMoneyActive do
+                local character = LocalPlayer.Character
+                if character and character:FindFirstChild("HumanoidRootPart") then
+                    local hrp = character.HumanoidRootPart
+                    local moneyFolder = Workspace:FindFirstChild("Money") or Workspace:FindFirstChild("Cash") or Workspace:FindFirstChild("Coins") or Workspace:FindFirstChild("Drops")
+                    
+                    if moneyFolder then
+                        for _, item in ipairs(moneyFolder:GetChildren()) do
+                            if not autoMoneyActive then break end
+                            local itemPart = item:IsA("BasePart") and item or item.PrimaryPart or item:FindFirstChildWhichIsA("BasePart")
+                            if itemPart then
+                                local currentPos = hrp.CFrame
+                                hrp.CFrame = itemPart.CFrame
+                                task.wait(0.03)
+                                hrp.CFrame = currentPos
+                            end
+                        end
+                    end
+                end
+                task.wait(1)
+            end
+        end)
+    else
+        BtnMoney.Text = "💰 ดูดเงินออโต้: ปิด"
+        BtnMoney.BackgroundColor3 = Color3.fromRGB(200, 80, 80)
+    end
+end)
+
+print("โหลด UI แบบมีปุ่มปิด/เปิดสำเร็จ!")
