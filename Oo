@@ -1,0 +1,299 @@
+-- ==========================================
+-- สคริปต์ Instant Steal + ปุ่มวงกลมเปิด/ปิด (Mobile Optimized)
+-- เกม: [Updated] Steal from KPOP Idols!
+-- ==========================================
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local VirtualUser = game:GetService("VirtualUser")
+local CoreGui = game:GetService("CoreGui")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+
+local autoStealActive = false
+local autoCollectMoneyActive = false
+local selectedFilters = {}
+
+local filterList = {
+    "Sugar", "Meme", "Secret", "Divine", "Mythical", "Legendary", "Epic", "Rare", "Uncommon", "Common",
+    "Concept", "Autumn", "Felix", "Easter", "Fallen", "School", "Signed", "Galactic", "Eclipse", 
+    "Cyberpunk", "Desert", "Elemental", "Prism", "Exclusive", "Collector", "Heaven", "Overdrive", 
+    "Sleeping", "Summer", "Front Page", "Brazil", "World Cup", "Fusion"
+}
+
+player.Idled:Connect(function()
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
+end)
+
+RunService.Stepped:Connect(function()
+    if autoStealActive and character then
+        for _, part in pairs(character:GetDescendants()) do
+            if part:IsA("BasePart") and part.CanCollide then
+                part.CanCollide = false
+            end
+        end
+    end
+end)
+
+local function interact(obj)
+    if obj:IsA("ProximityPrompt") then
+        fireproximityprompt(obj)
+    elseif obj:IsA("ClickDetector") then
+        fireclickdetector(obj)
+    end
+end
+
+local function doAutoCollectMoney()
+    while autoCollectMoneyActive do
+        character = player.Character or player.CharacterAdded:Wait()
+        local root = character:FindFirstChild("HumanoidRootPart")
+        
+        if root and firetouchinterest then
+            for _, obj in pairs(workspace:GetDescendants()) do
+                if obj:IsA("BasePart") and (obj.Name == "AutoCollect" or obj.Name == "Touch") then
+                    if obj:IsDescendantOf(workspace:FindFirstChild("Plot_" .. player.Name) or workspace) then
+                        firetouchinterest(root, obj, 0)
+                        task.wait(0.05)
+                        firetouchinterest(root, obj, 1)
+                    end
+                end
+            end
+        end
+        task.wait(2)
+    end
+end
+
+local function doAutoSteal()
+    while autoStealActive do
+        character = player.Character or player.CharacterAdded:Wait()
+        local root = character:FindFirstChild("HumanoidRootPart")
+        
+        if root then
+            for _, obj in pairs(workspace:GetDescendants()) do
+                if not autoStealActive then break end
+                
+                if obj:IsA("ProximityPrompt") or obj:IsA("ClickDetector") then
+                    local parentPart = obj.Parent
+                    if parentPart and (parentPart:IsA("BasePart") or parentPart:IsA("Model")) then
+                        
+                        local isInOtherPlot = false
+                        local ancestor = parentPart.Parent
+                        while ancestor and ancestor ~= workspace do
+                            if string.find(ancestor.Name, "Plot_") and ancestor.Name ~= ("Plot_" .. player.Name) then
+                                isInOtherPlot = true
+                                break
+                            end
+                            ancestor = ancestor.Parent
+                        end
+                        
+                        if not isInOtherPlot then
+                            local matchFilter = false
+                            local itemName = parentPart.Name
+                            
+                            for filterName, isSelected in pairs(selectedFilters) do
+                                if isSelected then
+                                    if string.find(string.lower(itemName), string.lower(filterName)) then
+                                        matchFilter = true
+                                        break
+                                    end
+                                    if parentPart:GetAttribute(filterName) or parentPart:FindFirstChild(filterName) then
+                                        matchFilter = true
+                                        break
+                                    end
+                                end
+                            end
+                            
+                            local hasAnyFilter = false
+                            for _, v in pairs(selectedFilters) do if v then hasAnyFilter = true break end end
+                            
+                            if not hasAnyFilter or matchFilter then
+                                local originalCFrame = root.CFrame
+                                local targetCF = parentPart:IsA("Model") and parentPart:GetPivot() or parentPart.CFrame
+                                
+                                root.CFrame = targetCF + Vector3.new(0, 2, 0)
+                                task.wait(0.05)
+                                
+                                for i = 1, 4 do
+                                    interact(obj)
+                                    task.wait(0.05)
+                                end
+                                
+                                root.CFrame = originalCFrame
+                                task.wait(0.1)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        task.wait(0.3)
+    end
+end
+
+-- ==========================================
+-- UI Setup พร้อมปุ่มวงกลมเปิด/ปิดเมนู
+-- ==========================================
+if CoreGui:FindFirstChild("KPOPStealHubCircle") then
+    CoreGui.KPOPStealHubCircle:Destroy()
+end
+
+local ScreenGui = Instance.new("ScreenGui", CoreGui)
+ScreenGui.Name = "KPOPStealHubCircle"
+ScreenGui.ResetOnSpawn = false
+
+-- 1. ปุ่มวงกลมลอยได้ (Floating Toggle Button)
+local ToggleCircle = Instance.new("TextButton", ScreenGui)
+ToggleCircle.Name = "ToggleCircle"
+ToggleCircle.Size = UDim2.new(0, 50, 0, 50)
+ToggleCircle.Position = UDim2.new(0, 15, 0.4, 0) -- อยู่กลางจอฝั่งซ้าย
+ToggleCircle.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+ToggleCircle.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleCircle.Text = "✨"
+ToggleCircle.TextSize = 22
+ToggleCircle.Font = Enum.Font.GothamBold
+ToggleCircle.Active = true
+ToggleCircle.Draggable = true -- สามารถใช้นิ้วลากเปลี่ยนตำแหน่งปุ่มวงกลมได้ตามใจชอบ
+Instance.new("UICorner", ToggleCircle).CornerRadius = UDim.new(1, 0) -- ทำเป็นวงกลมมน
+
+-- 2. หน้าต่างเมนูหลัก (Main Frame)
+local MainFrame = Instance.new("Frame", ScreenGui)
+MainFrame.Name = "MainFrame"
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+MainFrame.Position = UDim2.new(0, 75, 0.2, 0)
+MainFrame.Size = UDim2.new(0, 190, 0, 320)
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Visible = false -- เริ่มต้นให้ซ่อนหน้าต่างไว้ก่อน
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
+
+-- ระบบกดปุ่มวงกลมเพื่อ เปิด / ปิด (ซ่อน) เมนู
+ToggleCircle.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+    if MainFrame.Visible then
+        ToggleCircle.BackgroundColor3 = Color3.fromRGB(85, 255, 85) -- เปลี่ยนสีปุ่มเป็นเขียวตอนเปิดเมนู
+    else
+        ToggleCircle.BackgroundColor3 = Color3.fromRGB(45, 45, 55) -- กลับเป็นสีเดิมตอนปิดเมนู
+    end
+end)
+
+-- แถบหัวข้อหน้าต่าง
+local TitleBar = Instance.new("Frame", MainFrame)
+TitleBar.Size = UDim2.new(1, 0, 0, 30)
+TitleBar.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+Instance.new("UICorner", TitleBar).CornerRadius = UDim.new(0, 10)
+
+local BottomTitleFix = Instance.new("Frame", TitleBar)
+BottomTitleFix.Size = UDim2.new(1, 0, 0, 10)
+BottomTitleFix.Position = UDim2.new(0, 0, 1, -10)
+BottomTitleFix.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+BottomTitleFix.BorderSizePixel = 0
+
+local TitleText = Instance.new("TextLabel", TitleBar)
+TitleText.Size = UDim2.new(1, -10, 1, 0)
+TitleText.Position = UDim2.new(0, 10, 0, 0)
+TitleText.BackgroundTransparency = 1
+TitleText.Text = "📱 KPOP Mobile Hub"
+TitleText.TextColor3 = Color3.fromRGB(240, 240, 240)
+TitleText.Font = Enum.Font.GothamBold
+TitleText.TextSize = 12
+TitleText.TextXAlignment = Enum.TextXAlignment.Left
+
+local ContentFrame = Instance.new("Frame", MainFrame)
+ContentFrame.Size = UDim2.new(1, 0, 1, -30)
+ContentFrame.Position = UDim2.new(0, 0, 0, 30)
+ContentFrame.BackgroundTransparency = 1
+
+-- รายชื่อฟิลเตอร์ (เลื่อนหาง่ายบนมือถือ)
+local ScrollFrame = Instance.new("ScrollingFrame", ContentFrame)
+ScrollFrame.Size = UDim2.new(1, -16, 1, -115)
+ScrollFrame.Position = UDim2.new(0, 8, 0, 8)
+ScrollFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+ScrollFrame.ScrollBarThickness = 3
+ScrollFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100)
+ScrollFrame.BorderSizePixel = 0
+Instance.new("UICorner", ScrollFrame).CornerRadius = UDim.new(0, 6)
+
+local UIListLayout = Instance.new("UIListLayout", ScrollFrame)
+UIListLayout.Padding = UDim.new(0, 4)
+UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+local UIPadding = Instance.new("UIPadding", ScrollFrame)
+UIPadding.PaddingTop = UDim.new(0, 4)
+UIPadding.PaddingBottom = UDim.new(0, 4)
+
+for _, name in ipairs(filterList) do
+    selectedFilters[name] = false
+    
+    local ItemBtn = Instance.new("TextButton", ScrollFrame)
+    ItemBtn.Size = UDim2.new(1, -8, 0, 26)
+    ItemBtn.Text = "❌ " .. name
+    ItemBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+    ItemBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    ItemBtn.Font = Enum.Font.GothamSemibold
+    ItemBtn.TextSize = 11
+    Instance.new("UICorner", ItemBtn).CornerRadius = UDim.new(0, 4)
+    
+    ItemBtn.MouseButton1Click:Connect(function()
+        if selectedFilters[name] then
+            selectedFilters[name] = false
+            ItemBtn.Text = "❌ " .. name
+            ItemBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+            ItemBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+        else
+            selectedFilters[name] = true
+            ItemBtn.Text = "✅ " .. name
+            ItemBtn.TextColor3 = Color3.fromRGB(25, 25, 30)
+            ItemBtn.BackgroundColor3 = Color3.fromRGB(85, 255, 85)
+        end
+    end)
+end
+ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y + 8)
+
+-- ปุ่ม Auto Money
+local MoneyBtn = Instance.new("TextButton", ContentFrame)
+MoneyBtn.Size = UDim2.new(1, -16, 0, 30)
+MoneyBtn.Position = UDim2.new(0, 8, 1, -74)
+MoneyBtn.Text = "💲 Auto Money : OFF"
+MoneyBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+MoneyBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+MoneyBtn.Font = Enum.Font.GothamBold
+MoneyBtn.TextSize = 11
+Instance.new("UICorner", MoneyBtn).CornerRadius = UDim.new(0, 6)
+
+MoneyBtn.MouseButton1Click:Connect(function()
+    autoCollectMoneyActive = not autoCollectMoneyActive
+    if autoCollectMoneyActive then
+        MoneyBtn.Text = "💲 Auto Money : ON"
+        MoneyBtn.BackgroundColor3 = Color3.fromRGB(255, 170, 0)
+        MoneyBtn.TextColor3 = Color3.fromRGB(25, 25, 30)
+        task.spawn(doAutoCollectMoney)
+    else
+        MoneyBtn.Text = "💲 Auto Money : OFF"
+        MoneyBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+        MoneyBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    end
+end)
+
+-- ปุ่ม Instant Steal
+local StartBtn = Instance.new("TextButton", ContentFrame)
+StartBtn.Size = UDim2.new(1, -16, 0, 30)
+StartBtn.Position = UDim2.new(0, 8, 1, -38)
+StartBtn.Text = "▶ Instant Steal : OFF"
+StartBtn.BackgroundColor3 = Color3.fromRGB(255, 85, 85)
+StartBtn.TextColor3 = Color3.fromRGB(25, 25, 30)
+StartBtn.Font = Enum.Font.GothamBold
+StartBtn.TextSize = 11
+Instance.new("UICorner", StartBtn).CornerRadius = UDim.new(0, 6)
+
+StartBtn.MouseButton1Click:Connect(function()
+    autoStealActive = not autoStealActive
+    if autoStealActive then
+        StartBtn.Text = "⏸ Instant Steal : ON"
+        StartBtn.BackgroundColor3 = Color3.fromRGB(85, 255, 85)
+        task.spawn(doAutoSteal)
+    else
+        StartBtn.Text = "▶ Instant Steal : OFF"
+        StartBtn.BackgroundColor3 = Color3.fromRGB(255, 85, 85)
+    end
+end)
