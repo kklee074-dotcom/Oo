@@ -1,0 +1,142 @@
+-- ==========================================
+-- Mobile Map Dumper with Toggle UI (Delta Optimized)
+-- ==========================================
+
+local CoreGui = game:GetService("CoreGui")
+local Workspace = game:GetService("Workspace")
+
+-- ลบ UI เก่าทิ้งถ้ามี
+if CoreGui:FindFirstChild("MapDumperUI") then
+    CoreGui.MapDumperUI:Destroy()
+end
+
+local ScreenGui = Instance.new("ScreenGui", CoreGui)
+ScreenGui.Name = "MapDumperUI"
+ScreenGui.ResetOnSpawn = false
+
+-- ปุ่มวงกลมลอยตัวสำหรับเปิด-ปิด UI (Icon 📦)
+local ToggleCircle = Instance.new("TextButton", ScreenGui)
+ToggleCircle.Size = UDim2.new(0, 48, 0, 48)
+ToggleCircle.Position = UDim2.new(0, 15, 0.35, 0)
+ToggleCircle.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+ToggleCircle.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleCircle.Text = "📦"
+ToggleCircle.TextSize = 20
+ToggleCircle.Font = Enum.Font.GothamBold
+ToggleCircle.Active = true
+ToggleCircle.Draggable = true
+Instance.new("UICorner", ToggleCircle).CornerRadius = UDim.new(1, 0)
+
+-- หน้าต่างหลัก UI (ซ่อนไว้ก่อนเริ่มต้น)
+local MainFrame = Instance.new("Frame", ScreenGui)
+MainFrame.Size = UDim2.new(0, 300, 0, 200)
+MainFrame.Position = UDim2.new(0, 75, 0.2, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Visible = false
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
+
+-- ระบบกดเปิด-ปิด UI ด้วยปุ่มวงกลม
+ToggleCircle.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+    if MainFrame.Visible then
+        ToggleCircle.BackgroundColor3 = Color3.fromRGB(45, 180, 85)
+    else
+        ToggleCircle.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+    end
+end)
+
+-- หัวข้อ UI
+local Title = Instance.new("TextLabel", MainFrame)
+Title.Size = UDim2.new(1, 0, 0, 40)
+Title.BackgroundTransparency = 1
+Title.Text = "📦 Map Dumper Hub"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 14
+
+-- สถานะ (เช็คว่า Dump ไปเท่าไหร่แล้ว)
+local StatusLabel = Instance.new("TextLabel", MainFrame)
+StatusLabel.Size = UDim2.new(1, -20, 0, 30)
+StatusLabel.Position = UDim2.new(0, 10, 0, 45)
+StatusLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+StatusLabel.Text = "สถานะ: พร้อมใช้งาน"
+StatusLabel.TextColor3 = Color3.fromRGB(200, 200, 210)
+StatusLabel.Font = Enum.Font.GothamMedium
+StatusLabel.TextSize = 12
+Instance.new("UICorner", StatusLabel).CornerRadius = UDim.new(0, 6)
+
+-- ปุ่มกดเริ่ม Dump
+local DumpBtn = Instance.new("TextButton", MainFrame)
+DumpBtn.Size = UDim2.new(1, -20, 0, 40)
+DumpBtn.Position = UDim2.new(0, 10, 0, 85)
+DumpBtn.BackgroundColor3 = Color3.fromRGB(50, 180, 90)
+DumpBtn.Text = "🚀 เริ่มต้น Dump แมพ"
+DumpBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+DumpBtn.Font = Enum.Font.GothamBold
+DumpBtn.TextSize = 13
+Instance.new("UICorner", DumpBtn).CornerRadius = UDim.new(0, 6)
+
+-- ปุ่มเช็คจำนวนข้อมูลที่กำลังจะ Dump
+local CheckBtn = Instance.new("TextButton", MainFrame)
+CheckBtn.Size = UDim2.new(1, -20, 0, 35)
+CheckBtn.Position = UDim2.new(0, 10, 0, 135)
+CheckBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+CheckBtn.Text = "🔍 เช็คจำนวนไอเทมใน Workspace"
+CheckBtn.TextColor3 = Color3.fromRGB(200, 200, 210)
+CheckBtn.Font = Enum.Font.GothamMedium
+CheckBtn.TextSize = 12
+Instance.new("UICorner", CheckBtn).CornerRadius = UDim.new(0, 6)
+
+-- ฟังก์ชันนับจำนวนชิ้นส่วนใน Workspace เพื่อแสดงผลว่ามีเท่าไหร่
+CheckBtn.MouseButton1Click:Connect(function()
+    local totalItems = 0
+    for _, _ in ipairs(Workspace:GetDescendants()) do
+        totalItems = totalItems + 1
+    end
+    StatusLabel.Text = "📊 พบข้อมูลทั้งหมด: " .. tostring(totalItems) .. " รายการ"
+end)
+
+-- ฟังก์ชันกดสั่ง Dump
+DumpBtn.MouseButton1Click:Connect(function()
+    DumpBtn.Active = false
+    DumpBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    StatusLabel.Text = "⏳ กำลังดำเนินการ Dump..."
+    
+    task.spawn(function()
+        local success, err = pcall(function()
+            if saveinstance then
+                local options = {
+                    Noscripts = false,
+                    Mode = "optimized",
+                    Timeout = 10
+                }
+                saveinstance(options)
+            elseif writefile then
+                local mapData = {}
+                for _, obj in ipairs(Workspace:GetChildren()) do
+                    if obj:IsA("Model") or obj:IsA("Folder") then
+                        table.insert(mapData, obj.Name)
+                    end
+                end
+                local encoded = game:GetService("HttpService"):JSONEncode(mapData)
+                writefile("DumpedMap_" .. game.PlaceId .. ".txt", encoded)
+            else
+                error("Executor ไม่รองรับคำสั่งบันทึกไฟล์")
+            end
+        end)
+        
+        if success then
+            StatusLabel.Text = "✅ สำเร็จ! บันทึกแมพเรียบร้อยแล้ว"
+            DumpBtn.Text = "Dump สำเร็จแล้ว"
+            DumpBtn.BackgroundColor3 = Color3.fromRGB(40, 120, 200)
+        else
+            StatusLabel.Text = "❌ เกิดข้อผิดพลาดในการ Dump"
+            DumpBtn.Active = true
+            DumpBtn.BackgroundColor3 = Color3.fromRGB(50, 180, 90)
+            DumpBtn.Text = "🚀 เริ่มต้น Dump แมพอีกครั้ง"
+            warn(tostring(err))
+        end
+    end)
+end)
