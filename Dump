@@ -1,0 +1,63 @@
+-- ==========================================
+-- Mobile Map Dumper (Stable Version for Delta)
+-- ==========================================
+
+local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
+local Workspace = game:GetService("Workspace")
+
+local player = Players.LocalPlayer
+
+-- แจ้งเตือนสถานะผ่านหน้าจอ (Notification เล็กๆ)
+local function notify(title, text)
+    pcall(function()
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = title,
+            Text = text,
+            Duration = 5
+        })
+    end)
+end
+
+notify("Map Dumper", "กำลังเริ่มกระบวนการ Dump แมพ กรุณารอสักครู่...")
+
+-- ฟังก์ชันสำหรับบันทึกข้อมูลแบบปลอดภัย
+local function dumpMap()
+    local success, err = pcall(function()
+        -- ตรวจสอบฟังก์ชัน saveinstance (ตัวรันบนมือถือส่วนใหญ่รองรับ)
+        if saveinstance then
+            local options = {
+                Noscripts = false, -- ถ้าต้องการเอาสคริปต์ด้วย ให้เป็น false (ถ้าเครื่องกระตุกให้เปลี่ยนเป็น true)
+                Mode = "optimized",
+                Timeout = 10
+            }
+            
+            notify("Map Dumper", "กำลังบันทึกไฟล์แมพ...")
+            saveinstance(options)
+            notify("สำเร็จ!", "บันทึกแมพเรียบร้อยแล้ว ตรวจสอบไฟล์ในโฟลเดอร์ Workspace ของตัวรัน")
+        elseif writefile then
+            -- แผนสำรองกรณีใช้ saveinstance ไม่ได้ จะทำการดัมพ์โครงสร้างพาร์ทเบื้องต้นเป็น JSON/Text
+            notify("Map Dumper", "กำลังบันทึกโครงสร้าง Workspace พื้นฐาน...")
+            local mapData = {}
+            
+            for _, obj in ipairs(Workspace:GetChildren()) do
+                if obj:IsA("Model") or obj:IsA("Folder") then
+                    table.insert(mapData, obj.Name)
+                end
+            end
+            
+            local encoded = game:GetService("HttpService"):JSONEncode(mapData)
+            writefile("DumpedMap_" .. game.PlaceId .. ".txt", encoded)
+            notify("สำเร็จ!", "บันทึกรายชื่อโมเดลลงไฟล์ .txt เรียบร้อย!")
+        else
+            notify("Error", "ตัวรันของคุณไม่รองรับคำสั่งบันทึกไฟล์ (saveinstance/writefile)")
+        end
+    end)
+
+    if not success then
+        notify("เกิดข้อผิดพลาด", "ไม่สามารถ Dump แมพได้: " .. tostring(err))
+    end
+end
+
+-- รันฟังก์ชัน
+task.spawn(dumpMap)
