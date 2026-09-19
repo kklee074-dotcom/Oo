@@ -1,0 +1,41 @@
+-- Delta Executor: Test & Fix Script
+local success, err = pcall(function()
+    local CoreGui = game:GetService("CoreGui")
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    
+    -- ใช้ gethui() ถ้ามี (มาตรฐานของ Delta) หรือfallbackไป CoreGui
+    local parentUI = nil
+    if gethui then
+        parentUI = gethui()
+    else
+        parentUI = CoreGui
+    end
+
+    if parentUI:FindFirstChild("TestHubGUI") then
+        parentUI.TestHubGUI:Destroy()
+    end
+
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "TestHubGUI"
+    ScreenGui.Parent = parentUI
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+    local TestBtn = Instance.new("TextButton")
+    TestBtn.Parent = ScreenGui
+    TestBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+    TestBtn.Position = UDim2.new(0.5, -100, 0.5, -25)
+    TestBtn.Size = UDim2.new(0, 200, 0, 50)
+    TestBtn.Font = Enum.Font.SourceSansBold
+    TestBtn.Text = "กดติดแล้ว! (คลิกเพื่อปิด)"
+    TestBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TestBtn.TextSize = 16
+
+    TestBtn.MouseButton1Click:Connect(function()
+        ScreenGui:Destroy()
+    end)
+end)
+
+if not success then
+    print("Error:", err)
+end
