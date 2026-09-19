@@ -1,0 +1,406 @@
+-- ==========================================
+-- KPOP Hub: Wind UI Style (Fixed Robux Prompt Bug)
+-- เกม: [Updated] Steal from KPOP Idols!
+-- ==========================================
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local VirtualUser = game:GetService("VirtualUser")
+local CoreGui = game:GetService("CoreGui")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+
+local autoStealActive = false
+local autoCollectMoneyActive = false
+local autoUnlockPlotActive = false
+local customWalkSpeed = 20
+
+player.Idled:Connect(function()
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
+end)
+
+RunService.Stepped:Connect(function()
+    if character and character:FindFirstChild("Humanoid") then
+        if autoStealActive then
+            for _, part in pairs(character:GetDescendants()) do
+                if part:IsA("BasePart") and part.CanCollide then
+                    part.CanCollide = false
+                end
+            end
+        end
+        character.Humanoid.WalkSpeed = customWalkSpeed
+    end
+end)
+
+local function interact(obj)
+    if obj:IsA("ProximityPrompt") then
+        fireproximityprompt(obj)
+    elseif obj:IsA("ClickDetector") then
+        fireclickdetector(obj)
+    end
+end
+
+local function getMyPlot()
+    for _, plot in pairs(workspace:GetChildren()) do
+        if string.find(string.lower(plot.Name), "plot") then
+            if string.find(plot.Name, player.Name) then
+                return plot
+            end
+            for _, desc in pairs(plot:GetDescendants()) do
+                if desc.Name == player.Name or (desc:IsA("StringValue") and desc.Value == player.Name) then
+                    return plot
+                end
+            end
+        end
+    end
+    return nil
+end
+
+-- ระบบเก็บเงินออโต้ (กรองบล็อกไอเทม/ปุ่มของ Robux ออก 100%)
+local function doAutoCollectMoney()
+    while autoCollectMoneyActive do
+        character = player.Character or player.CharacterAdded:Wait()
+        local root = character:FindFirstChild("HumanoidRootPart")
+        local myPlot = getMyPlot()
+        
+        if root and firetouchinterest and myPlot then
+            for _, obj in pairs(myPlot:GetDescendants()) do
+                if not autoCollectMoneyActive then break end
+                
+                if obj:IsA("BasePart") and (obj.Name == "AutoCollect" or obj.Name == "Touch" or string.find(string.lower(obj.Name), "money") or string.find(string.lower(obj.Name), "cash")) then
+                    
+                    -- เช็กชื่อหรือพาธป้องกันไม่ให้ไปโดนปุ่มของ Robux หรือ Gamepass
+                    local fullName = string.lower(obj.Name)
+                    local parentName = obj.Parent and string.lower(obj.Parent.Name) or ""
+                    
+                    local isRobuxItem = false
+                    if string.find(fullName, "robux") or string.find(fullName, "gamepass") or string.find(fullName, "premium") or string.find(fullName, "vip") then
+                        isRobuxItem = true
+                    end
+                    if string.find(parentName, "robux") or string.find(parentName, "gamepass") or string.find(parentName, "developer") or string.find(parentName, "shop") then
+                        isRobuxItem = true
+                    end
+                    
+                    -- ถ้าไม่ใช่ของโรบัก ค่อยทำการเก็บเงิน
+                    if not isRobuxItem then
+                        firetouchinterest(root, obj, 0)
+                        task.wait(0.05)
+                        firetouchinterest(root, obj, 1)
+                    end
+                end
+            end
+        end
+        task.wait(2)
+    end
+end
+
+-- ระบบปลดล็อคฐานออโต้
+local function doAutoUnlockPlot()
+    while autoUnlockPlotActive do
+        pcall(function()
+            character = player.Character or player.CharacterAdded:Wait()
+            local root = character:FindFirstChild("HumanoidRootPart")
+            local myPlot = getMyPlot()
+            
+            local leaderstats = player:FindFirstChild("leaderstats")
+            local playerMoney = 0
+            if leaderstats then
+                local cash = leaderstats:FindFirstChild("Cash") or leaderstats:FindFirstChild("Money") or leaderstats:FindFirstChild("Coins")
+                if cash then playerMoney = cash.Value end
+            end
+            
+            if root and myPlot and firetouchinterest then
+                for _, obj in pairs(myPlot:GetDescendants()) do
+                    if not autoUnlockPlotActive then break end
+                    
+                    if obj:IsA("BasePart") and (string.find(string.lower(obj.Name), "button") or string.find(string.lower(obj.Name), "unlock") or string.find(string.lower(obj.Name), "buy") or obj.Name == "Touch") then
+                        -- ข้ามปุ่มที่เป็นการซื้อด้วย Robux
+                        local fullName = string.lower(obj.Name)
+                        local parentName = obj.Parent and string.lower(obj.Parent.Name) or ""
+                        if string.find(fullName, "robux") or string.find(parentName, "robux") then
+                            continue
+                        end
+                        
+                        local cost = obj:GetAttribute("Cost") or obj:GetAttribute("Price")
+                        if not cost and obj.Parent then
+                            cost = obj.Parent:GetAttribute("Cost") or obj.Parent:GetAttribute("Price")
+                        end
+                        
+                        if cost and playerMoney < cost then
+                            continue
+                        end
+                        
+                        local originalCFrame = root.CFrame
+                        root.CFrame = obj.CFrame + Vector3.new(0, 2, 0)
+                        task.wait(0.05)
+                        firetouchinterest(root, obj, 0)
+                        task.wait(0.05)
+                        firetouchinterest(root, obj, 1)
+                        task.wait(0.1)
+                        root.CFrame = originalCFrame
+                        task.wait(0.5)
+                    end
+                end
+            end
+        end)
+        task.wait(3)
+    end
+end
+
+-- ระบบ Instant Steal (กวาดไอเทมจุดสาธารณะ)
+local function doAutoSteal()
+    while autoStealActive do
+        character = player.Character or player.CharacterAdded:Wait()
+        local root = character:FindFirstChild("HumanoidRootPart")
+        local myPlot = getMyPlot()
+        
+        if root then
+            for _, obj in pairs(workspace:GetDescendants()) do
+                if not autoStealActive then break end
+                
+                if obj:IsA("ProximityPrompt") or obj:IsA("ClickDetector") then
+                    local parentPart = obj.Parent
+                    if parentPart and (parentPart:IsA("BasePart") or parentPart:IsA("Model")) then
+                        
+                        local isInsideMyPlot = false
+                        if myPlot and parentPart:IsDescendantOf(myPlot) then
+                            isInsideMyPlot = true
+                        end
+                        
+                        if not isInsideMyPlot then
+                            local originalCFrame = root.CFrame
+                            local targetCF = parentPart:IsA("Model") and parentPart:GetPivot() or parentPart.CFrame
+                            
+                            root.CFrame = targetCF + Vector3.new(0, 2, 0)
+                            task.wait(0.05)
+                            
+                            for i = 1, 4 do
+                                interact(obj)
+                                task.wait(0.05)
+                            end
+                            
+                            root.CFrame = originalCFrame
+                            task.wait(0.1)
+                        end
+                    end
+                end
+            end
+        end
+        task.wait(0.3)
+    end
+end
+
+-- ==========================================
+-- UI Creation (Wind UI Dark Theme Style)
+-- ==========================================
+if CoreGui:FindFirstChild("KPOPWindHub") then
+    CoreGui.KPOPWindHub:Destroy()
+end
+
+local ScreenGui = Instance.new("ScreenGui", CoreGui)
+ScreenGui.Name = "KPOPWindHub"
+ScreenGui.ResetOnSpawn = false
+
+local ToggleCircle = Instance.new("TextButton", ScreenGui)
+ToggleCircle.Size = UDim2.new(0, 48, 0, 48)
+ToggleCircle.Position = UDim2.new(0, 15, 0.35, 0)
+ToggleCircle.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+ToggleCircle.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleCircle.Text = "⚙️"
+ToggleCircle.TextSize = 20
+ToggleCircle.Font = Enum.Font.GothamBold
+ToggleCircle.Active = true
+ToggleCircle.Draggable = true
+Instance.new("UICorner", ToggleCircle).CornerRadius = UDim.new(1, 0)
+
+local MainFrame = Instance.new("Frame", ScreenGui)
+MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
+MainFrame.Position = UDim2.new(0, 75, 0.2, 0)
+MainFrame.Size = UDim2.new(0, 360, 0, 240)
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Visible = false
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
+
+ToggleCircle.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+    if MainFrame.Visible then
+        ToggleCircle.BackgroundColor3 = Color3.fromRGB(45, 180, 85)
+    else
+        ToggleCircle.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+    end
+end)
+
+local Sidebar = Instance.new("Frame", MainFrame)
+Sidebar.Size = UDim2.new(0, 110, 1, 0)
+Sidebar.BackgroundColor3 = Color3.fromRGB(24, 24, 30)
+Instance.new("UICorner", Sidebar).CornerRadius = UDim.new(0, 10)
+
+local SidebarCover = Instance.new("Frame", Sidebar)
+SidebarCover.Size = UDim2.new(0, 10, 1, 0)
+SidebarCover.Position = UDim2.new(1, -10, 0, 0)
+SidebarCover.BackgroundColor3 = Color3.fromRGB(24, 24, 30)
+SidebarCover.BorderSizePixel = 0
+
+local AppTitle = Instance.new("TextLabel", Sidebar)
+AppTitle.Size = UDim2.new(1, 0, 0, 40)
+AppTitle.BackgroundTransparency = 1
+AppTitle.Text = "Theme 'Dark'"
+AppTitle.TextColor3 = Color3.fromRGB(200, 200, 210)
+AppTitle.Font = Enum.Font.GothamBold
+AppTitle.TextSize = 12
+
+local Container = Instance.new("Frame", MainFrame)
+Container.Size = UDim2.new(1, -115, 1, 0)
+Container.Position = UDim2.new(0, 115, 0, 0)
+Container.BackgroundTransparency = 1
+
+local function createPage()
+    local p = Instance.new("ScrollingFrame", Container)
+    p.Size = UDim2.new(1, -10, 1, -10)
+    p.Position = UDim2.new(0, 0, 0, 5)
+    p.BackgroundTransparency = 1
+    p.ScrollBarThickness = 3
+    p.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 90)
+    p.Visible = false
+    local layout = Instance.new("UIListLayout", p)
+    layout.Padding = UDim.new(0, 6)
+    return p
+end
+
+local pageMain = createPage()
+local pageSettings = createPage()
+
+pageMain.Visible = true
+
+local function switchPage(targetPage)
+    pageMain.Visible = false
+    pageSettings.Visible = false
+    targetPage.Visible = true
+end
+
+local function createTabBtn(name, posY, targetPage)
+    local btn = Instance.new("TextButton", Sidebar)
+    btn.Size = UDim2.new(1, -16, 0, 32)
+    btn.Position = UDim2.new(0, 8, 0, posY)
+    btn.BackgroundColor3 = Color3.fromRGB(32, 32, 40)
+    btn.Text = "  " .. name
+    btn.TextColor3 = Color3.fromRGB(180, 180, 190)
+    btn.Font = Enum.Font.GothamSemibold
+    btn.TextSize = 11
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+    
+    btn.MouseButton1Click:Connect(function()
+        switchPage(targetPage)
+    end)
+end
+
+createTabBtn("🏠 Main", 45, pageMain)
+createTabBtn("⚙️ Settings", 85, pageSettings)
+
+local function createToggleRow(parent, text, callback)
+    local frame = Instance.new("Frame", parent)
+    frame.Size = UDim2.new(1, -6, 0, 36)
+    frame.BackgroundColor3 = Color3.fromRGB(28, 28, 35)
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 6)
+    
+    local lbl = Instance.new("TextLabel", frame)
+    lbl.Size = UDim2.new(1, -55, 1, 0)
+    lbl.Position = UDim2.new(0, 10, 0, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = text
+    lbl.TextColor3 = Color3.fromRGB(220, 220, 230)
+    lbl.Font = Enum.Font.GothamMedium
+    lbl.TextSize = 11
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local tBtn = Instance.new("TextButton", frame)
+    tBtn.Size = UDim2.new(0, 42, 0, 22)
+    tBtn.Position = UDim2.new(1, -48, 0.5, -11)
+    tBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+    tBtn.Text = "OFF"
+    tBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
+    tBtn.Font = Enum.Font.GothamBold
+    tBtn.TextSize = 9
+    Instance.new("UICorner", tBtn).CornerRadius = UDim.new(1, 0)
+    
+    local active = false
+    tBtn.MouseButton1Click:Connect(function()
+        active = not active
+        if active then
+            tBtn.BackgroundColor3 = Color3.fromRGB(60, 200, 90)
+            tBtn.TextColor3 = Color3.fromRGB(25, 25, 30)
+            tBtn.Text = "ON"
+        else
+            tBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+            tBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
+            tBtn.Text = "OFF"
+        end
+        callback(active)
+    end)
+end
+
+createToggleRow(pageMain, "💲 Auto Money", function(state)
+    autoCollectMoneyActive = state
+    if state then task.spawn(doAutoCollectMoney) end
+end)
+
+createToggleRow(pageMain, "🚀 Instant Steal", function(state)
+    autoStealActive = state
+    if state then task.spawn(doAutoSteal) end
+end)
+
+createToggleRow(pageMain, "🏗️ Auto Unlock Plot", function(state)
+    autoUnlockPlotActive = state
+    if state then task.spawn(doAutoUnlockPlot) end
+end)
+
+pageMain.CanvasSize = UDim2.new(0, 0, 0, 135)
+
+local speedLbl = Instance.new("TextLabel", pageSettings)
+speedLbl.Size = UDim2.new(1, -6, 0, 20)
+speedLbl.BackgroundTransparency = 1
+speedLbl.Text = "⚡ WalkSpeed: 20"
+speedLbl.TextColor3 = Color3.fromRGB(200, 200, 210)
+speedLbl.Font = Enum.Font.GothamMedium
+speedLbl.TextSize = 11
+speedLbl.TextXAlignment = Enum.TextXAlignment.Left
+
+local speedBox = Instance.new("TextBox", pageSettings)
+speedBox.Size = UDim2.new(1, -6, 0, 30)
+speedBox.BackgroundColor3 = Color3.fromRGB(28, 28, 35)
+speedBox.Text = "20"
+speedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+speedBox.Font = Enum.Font.GothamBold
+speedBox.TextSize = 12
+Instance.new("UICorner", speedBox).CornerRadius = UDim.new(0, 6)
+
+speedBox.FocusLost:Connect(function(enterPressed)
+    local val = tonumber(speedBox.Text)
+    if val then
+        customWalkSpeed = math.clamp(val, 16, 200)
+        speedBox.Text = tostring(customWalkSpeed)
+        speedLbl.Text = "⚡ WalkSpeed: " .. customWalkSpeed
+    else
+        speedBox.Text = tostring(customWalkSpeed)
+    end
+end)
+
+local unloadBtn = Instance.new("TextButton", pageSettings)
+unloadBtn.Size = UDim2.new(1, -6, 0, 32)
+unloadBtn.Position = UDim2.new(0, 0, 0, 10)
+unloadBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+unloadBtn.Text = "Unload Hub"
+unloadBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+unloadBtn.Font = Enum.Font.GothamBold
+unloadBtn.TextSize = 11
+Instance.new("UICorner", unloadBtn).CornerRadius = UDim.new(0, 6)
+
+unloadBtn.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+end)
+
+pageSettings.CanvasSize = UDim2.new(0, 0, 0, 110)
