@@ -1,0 +1,492 @@
+-- Delta Executor: Ultimate All-in-One KPOP Idols Hub (Mobile Optimized)
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local Lighting = game:GetService("Lighting")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+
+-- ระบบหาที่วาง UI ที่ปลอดภัยที่สุดสำหรับ Delta Executor บนมือถือ
+local parentUI = nil
+if gethui then
+    parentUI = gethui()
+else
+    parentUI = game:GetService("CoreGui")
+end
+
+-- ป้องกันเปิดหน้าต่างซ้ำ
+if parentUI:FindFirstChild("UltimateKPopHub") then
+    parentUI.UltimateKPopHub:Destroy()
+end
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "UltimateKPopHub"
+ScreenGui.Parent = parentUI
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.ResetOnSpawn = false
+
+-- 1. ปุ่มวงกลมลอยบนจอ (สำหรับเปิด-ปิดระบบขโมยการ์ด: เขียว = เปิด, ดำ = ปิด)
+local CircleToggleBtn = Instance.new("TextButton")
+CircleToggleBtn.Name = "CircleToggleBtn"
+CircleToggleBtn.Parent = ScreenGui
+CircleToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+CircleToggleBtn.Position = UDim2.new(0.02, 0, 0.35, 0)
+CircleToggleBtn.Size = UDim2.new(0, 48, 0, 48)
+CircleToggleBtn.Font = Enum.Font.SourceSansBold
+CircleToggleBtn.Text = "➔"
+CircleToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CircleToggleBtn.TextSize = 22
+CircleToggleBtn.Active = true
+CircleToggleBtn.Draggable = true
+Instance.new("UICorner", CircleToggleBtn).CornerRadius = UDim.new(1, 0)
+
+-- 2. กรอบหน้าต่างหลัก (Main Frame)
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+MainFrame.BorderSizePixel = 0
+MainFrame.Position = UDim2.new(0.5, -160, 0.5, -135)
+MainFrame.Size = UDim2.new(0, 320, 0, 280)
+MainFrame.Active = true
+MainFrame.Draggable = true
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 10)
+
+-- ส่วนหัว (Header)
+local Header = Instance.new("TextLabel")
+Header.Parent = MainFrame
+Header.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+Header.Size = UDim2.new(1, 0, 0, 38)
+Header.Font = Enum.Font.SourceSansBold
+Header.Text = "  KPOP Idols : Ultimate Hub"
+Header.TextColor3 = Color3.fromRGB(240, 240, 240)
+Header.TextSize = 14
+Header.TextXAlignment = Enum.TextXAlignment.Left
+Instance.new("UICorner", Header).CornerRadius = UDim.new(0, 10)
+
+-- ปุ่มย่อหน้าต่าง
+local HideUIBtn = Instance.new("TextButton")
+HideUIBtn.Parent = Header
+HideUIBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+HideUIBtn.Position = UDim2.new(1, -64, 0.18, 0)
+HideUIBtn.Size = UDim2.new(0, 26, 0, 26)
+HideUIBtn.Font = Enum.Font.SourceSansBold
+HideUIBtn.Text = "_"
+HideUIBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+HideUIBtn.TextSize = 12
+Instance.new("UICorner", HideUIBtn).CornerRadius = UDim.new(0, 6)
+
+-- ปุ่มปิดสคริปต์ (X)
+local CloseX = Instance.new("TextButton")
+CloseX.Parent = Header
+CloseX.BackgroundColor3 = Color3.fromRGB(210, 60, 60)
+CloseX.Position = UDim2.new(1, -32, 0.18, 0)
+CloseX.Size = UDim2.new(0, 26, 0, 26)
+CloseX.Font = Enum.Font.SourceSansBold
+CloseX.Text = "X"
+CloseX.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseX.TextSize = 12
+Instance.new("UICorner", CloseX).CornerRadius = UDim.new(0, 6)
+
+CloseX.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+end)
+
+local isUIOpen = true
+HideUIBtn.MouseButton1Click:Connect(function()
+    isUIOpen = not isUIOpen
+    for _, child in pairs(MainFrame:GetChildren()) do
+        if child ~= Header then
+            child.Visible = isUIOpen
+        end
+    end
+    MainFrame.Size = isUIOpen and UDim2.new(0, 320, 0, 280) or UDim2.new(0, 320, 0, 38)
+end)
+
+-- 3. แถบเมนูด้านซ้าย (Sidebar Tabs) และ Container (แบ่งเป็น 3 แท็บ)
+local Sidebar = Instance.new("Frame")
+Sidebar.Parent = MainFrame
+Sidebar.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+Sidebar.Position = UDim2.new(0, 0, 0, 38)
+Sidebar.Size = UDim2.new(0, 95, 1, -38)
+
+local Container = Instance.new("Frame")
+Container.Parent = MainFrame
+Container.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+Container.Position = UDim2.new(0, 95, 0, 38)
+Container.Size = UDim2.new(1, -95, 1, -38)
+
+local FarmPage = Instance.new("ScrollingFrame")
+FarmPage.Parent = Container
+FarmPage.Size = UDim2.new(1, 0, 1, 0)
+FarmPage.BackgroundTransparency = 1
+FarmPage.Visible = true
+FarmPage.CanvasSize = UDim2.new(0, 0, 1.6, 0)
+FarmPage.ScrollBarThickness = 3
+
+local StealPage = Instance.new("ScrollingFrame")
+StealPage.Parent = Container
+StealPage.Size = UDim2.new(1, 0, 1, 0)
+StealPage.BackgroundTransparency = 1
+StealPage.Visible = false
+StealPage.CanvasSize = UDim2.new(0, 0, 1.4, 0)
+StealPage.ScrollBarThickness = 3
+
+local ExtraPage = Instance.new("ScrollingFrame")
+ExtraPage.Parent = Container
+ExtraPage.Size = UDim2.new(1, 0, 1, 0)
+ExtraPage.BackgroundTransparency = 1
+ExtraPage.Visible = false
+ExtraPage.CanvasSize = UDim2.new(0, 0, 1.6, 0)
+ExtraPage.ScrollBarThickness = 3
+
+local function createTab(name, posY, targetPage)
+    local btn = Instance.new("TextButton")
+    btn.Parent = Sidebar
+    btn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    btn.Position = UDim2.new(0.06, 0, posY, 0)
+    btn.Size = UDim2.new(0.88, 0, 0, 32)
+    btn.Font = Enum.Font.SourceSansBold
+    btn.Text = name
+    btn.TextColor3 = Color3.fromRGB(210, 210, 210)
+    btn.TextSize = 12
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+    
+    btn.MouseButton1Click:Connect(function()
+        FarmPage.Visible = false
+        StealPage.Visible = false
+        ExtraPage.Visible = false
+        targetPage.Visible = true
+    end)
+end
+
+createTab("⚡ ฟาร์มหลัก", 0.05, FarmPage)
+createTab("🎯 ขโมยการ์ด", 0.18, StealPage)
+createTab("🌟 ฟังก์ชันเสริม", 0.31, ExtraPage)
+
+local function createActionButton(parent, name, posY, color, callback)
+    local btn = Instance.new("TextButton")
+    btn.Parent = parent
+    btn.BackgroundColor3 = color
+    btn.Position = UDim2.new(0.08, 0, posY, 0)
+    btn.Size = UDim2.new(0.84, 0, 0, 32)
+    btn.Font = Enum.Font.SourceSansBold
+    btn.Text = name
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextSize = 11
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+    btn.MouseButton1Click:Connect(callback)
+    return btn
+end
+
+-------------------------------------------------------------
+-- [แท็บที่ 1: ฟาร์มหลัก (FarmPage)]
+-------------------------------------------------------------
+local isAutoRunning = false
+createActionButton(FarmPage, "เปิด Auto Prompt (สล็อต)", 0.04, Color3.fromRGB(46, 204, 113), function()
+    isAutoRunning = not isAutoRunning
+    if isAutoRunning then
+        task.spawn(function()
+            while isAutoRunning do
+                pcall(function()
+                    for _, plot in pairs(Workspace.Plots:GetChildren()) do
+                        for _, expansion in pairs(plot:GetChildren()) do
+                            if expansion.Name:match("Expansion") then
+                                for _, slot in pairs(expansion:GetChildren()) do
+                                    if slot:FindFirstChild("PromptAttachment") then
+                                        local prompt = slot.PromptAttachment:FindFirstChild("ProximityPrompt")
+                                        if prompt and prompt.Enabled then
+                                            fireproximityprompt(prompt)
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end)
+                task.wait(1.5)
+            end
+        end)
+    end
+end)
+
+local isAutoCashRunning = false
+createActionButton(FarmPage, "เปิด Auto เก็บเงิน (ปลอดภัย)", 0.18, Color3.fromRGB(52, 152, 219), function()
+    isAutoCashRunning = not isAutoCashRunning
+    if isAutoCashRunning then
+        task.spawn(function()
+            while isAutoCashRunning do
+                pcall(function()
+                    for _, plot in pairs(Workspace.Plots:GetChildren()) do
+                        if plot:GetAttribute("PlotOwner") == LocalPlayer.UserId then
+                            for _, desc in pairs(plot:GetDescendants()) do
+                                if desc:IsA("ProximityPrompt") then
+                                    local actionText = string.lower(desc.ActionText or "")
+                                    local objectText = string.lower(desc.ObjectText or "")
+                                    local parentName = string.lower(desc.Parent.Name or "")
+                                    
+                                    if not (actionText:find("buy") or actionText:find("pass") or actionText:find("robux") or 
+                                            objectText:find("buy") or objectText:find("pass") or objectText:find("robux") or
+                                            parentName:find("pass") or parentName:find("gamepass")) then
+                                        fireproximityprompt(desc)
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end)
+                task.wait(1)
+            end
+        end)
+    end
+end)
+
+createActionButton(FarmPage, "วาร์ปหาอีเวนต์สภาพอากาศ", 0.32, Color3.fromRGB(241, 196, 15), function()
+    task.spawn(function()
+        pcall(function()
+            local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if not hrp then return end
+            
+            local foundEvent = false
+            for _, obj in pairs(Workspace:GetDescendants()) do
+                if obj:IsA("ProximityPrompt") or obj:IsA("BasePart") then
+                    local nameLower = obj.Name:lower()
+                    if nameLower:find("aurora") or nameLower:find("star") or nameLower:find("moon") or nameLower:find("sakura") or nameLower:find("weather") then
+                        local targetPart = obj:IsA("ProximityPrompt") and obj.Parent or obj
+                        if targetPart and targetPart:IsA("BasePart") then
+                            hrp.CFrame = targetPart.CFrame + Vector3.new(0, 3, 0)
+                            if obj:IsA("ProximityPrompt") then
+                                fireproximityprompt(obj)
+                            end
+                            foundEvent = true
+                            break
+                        end
+                    end
+                end
+            end
+            
+            if not foundEvent then
+                print("[Hub] ไม่พบจุดอีเวนต์สภาพอากาศในขณะนี้")
+            end
+        end)
+    end
+end)
+
+createActionButton(FarmPage, "เร่งความเร็ว (Speed: 50)", 0.46, Color3.fromRGB(155, 89, 182), function()
+    pcall(function()
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid.WalkSpeed = 50
+            LocalPlayer.Character.Humanoid.JumpPower = 100
+        end
+    end)
+end)
+
+createActionButton(FarmPage, "ลบหมอก / เพิ่ม FPS", 0.60, Color3.fromRGB(230, 126, 34), function()
+    pcall(function()
+        Lighting.FogEnd = 999999
+        for _, v in pairs(Lighting:GetChildren()) do
+            if v:IsA("PostEffect") or v:IsA("Atmosphere") then
+                v.Enabled = false
+            end
+        end
+    end)
+end)
+
+-------------------------------------------------------------
+-- [แท็บที่ 2: ตั้งค่าขโมยการ์ด (StealPage)]
+-------------------------------------------------------------
+local rarities = {"All (ทั้งหมด)", "Legendary", "Epic", "Shiny", "Gold", "Silver", "Rainbow", "Diamond", "Aurora", "Lunar", "Starlight", "Blossom"}
+local currentRarityIndex = 1
+
+local RarityBtn = Instance.new("TextButton")
+RarityBtn.Parent = StealPage
+RarityBtn.BackgroundColor3 = Color3.fromRGB(52, 152, 219)
+RarityBtn.Position = UDim2.new(0.08, 0, 0.05, 0)
+RarityBtn.Size = UDim2.new(0.84, 0, 0, 35)
+RarityBtn.Font = Enum.Font.SourceSansBold
+RarityBtn.Text = "เป้าหมาย: " .. rarities[currentRarityIndex]
+RarityBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+RarityBtn.TextSize = 12
+Instance.new("UICorner", RarityBtn).CornerRadius = UDim.new(0, 6)
+
+RarityBtn.MouseButton1Click:Connect(function()
+    currentRarityIndex = currentRarityIndex + 1
+    if currentRarityIndex > #rarities then
+        currentRarityIndex = 1
+    end
+    RarityBtn.Text = "เป้าหมาย: " .. rarities[currentRarityIndex]
+end)
+
+createActionButton(StealPage, "วาร์ปกลับแปลงของฉัน", 0.25, Color3.fromRGB(155, 89, 182), function()
+    pcall(function()
+        for _, plot in pairs(Workspace.Plots:GetChildren()) do
+            if plot:FindFirstChild("Base") and plot:GetAttribute("PlotOwner") == LocalPlayer.UserId then
+                LocalPlayer.Character.HumanoidRootPart.CFrame = plot.Base.CFrame + Vector3.new(0, 5, 0)
+                break
+            end
+        end
+    end)
+end)
+
+createActionButton(StealPage, "พุ่งทะลุข้ามประตู/ด่าน", 0.45, Color3.fromRGB(231, 76, 60), function()
+    pcall(function()
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            char.HumanoidRootPart.CFrame = char.HumanoidRootPart.CFrame + (char.HumanoidRootPart.CFrame.LookVector * 40)
+        end
+    end)
+end)
+
+-------------------------------------------------------------
+-- [แท็บที่ 3: ฟังก์ชันเสริมขั้นเทพ (ExtraPage)]
+-------------------------------------------------------------
+local isEspRunning = false
+createActionButton(ExtraPage, "เปิด/ปิด Card ESP (มองทะลุ)", 0.04, Color3.fromRGB(230, 126, 34), function()
+    isEspRunning = not isEspRunning
+    task.spawn(function()
+        while isEspRunning do
+            pcall(function()
+                for _, obj in pairs(Workspace:GetDescendants()) do
+                    if obj:IsA("ProximityPrompt") then
+                        local parentModel = obj.Parent and obj.Parent.Parent
+                        if parentModel and not parentModel:FindFirstChild("CardHighlight") then
+                            local highlight = Instance.new("Highlight")
+                            highlight.Name = "CardHighlight"
+                            highlight.Adornee = parentModel
+                            highlight.FillColor = Color3.fromRGB(255, 215, 0)
+                            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                            highlight.Parent = parentModel
+                        end
+                    end
+                end
+            end)
+            task.wait(3)
+        end
+        pcall(function()
+            for _, obj in pairs(Workspace:GetDescendants()) do
+                if obj.Name == "CardHighlight" then
+                    obj:Destroy()
+                end
+            end
+        end)
+    end)
+end)
+
+local isAutoOpenPack = false
+createActionButton(ExtraPage, "เปิด Auto เปิดแพ็กการ์ด", 0.18, Color3.fromRGB(46, 204, 113), function()
+    isAutoOpenPack = not isAutoOpenPack
+    task.spawn(function()
+        while isAutoOpenPack do
+            pcall(function()
+                for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
+                    if remote:IsA("RemoteEvent") and (remote.Name:lower():find("pack") or remote.Name:lower():find("open")) then
+                        remote:FireServer()
+                    end
+                end
+            end)
+            task.wait(1)
+        end
+    end)
+end)
+
+local isAutoRebirth = false
+createActionButton(ExtraPage, "เปิด Auto รีบอร์น (Rebirth)", 0.32, Color3.fromRGB(52, 152, 219), function()
+    isAutoRebirth = not isAutoRebirth
+    task.spawn(function()
+        while isAutoRebirth do
+            pcall(function()
+                for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
+                    if remote:IsA("RemoteEvent") and remote.Name:lower():find("rebirth") then
+                        remote:FireServer()
+                    end
+                end
+            end)
+            task.wait(3)
+        end
+    end)
+end)
+
+local isAutoRoulette = false
+createActionButton(ExtraPage, "เปิด Auto หมุนวงล้อ (Roulette)", 0.46, Color3.fromRGB(155, 89, 182), function()
+    isAutoRoulette = not isAutoRoulette
+    task.spawn(function()
+        while isAutoRoulette do
+            pcall(function()
+                for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
+                    if remote:IsA("RemoteEvent") and (remote.Name:lower():find("roulette") or remote.Name:lower():find("spin")) then
+                        remote:FireServer()
+                    end
+                end
+            end)
+            task.wait(2)
+        end
+    end)
+end)
+
+-------------------------------------------------------------
+-- [ระบบขโมยการ์ดและปุ่มวงกลมสีเขียว/ดำ (ทีละใบแล้วกลับฐานทันที)]
+-------------------------------------------------------------
+local isStealingRunning = false
+
+local function toggleStealing()
+    isStealingRunning = not isStealingRunning
+    if isStealingRunning then
+        CircleToggleBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+        
+        task.spawn(function()
+            while isStealingRunning do
+                pcall(function()
+                    local basePos = nil
+                    for _, plot in pairs(Workspace.Plots:GetChildren()) do
+                        if plot:FindFirstChild("Base") and plot:GetAttribute("PlotOwner") == LocalPlayer.UserId then
+                            basePos = plot.Base.CFrame + Vector3.new(0, 5, 0)
+                            break
+                        end
+                    end
+                    
+                    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                    if hrp and basePos then
+                        local targetFilter = rarities[currentRarityIndex]
+                        local collected = false
+                        
+                        for _, obj in pairs(Workspace:GetDescendants()) do
+                            if not isStealingRunning then break end
+                            if obj:IsA("ProximityPrompt") then
+                                local parentModel = obj.Parent and obj.Parent.Parent
+                                local match = true
+                                
+                                if not targetFilter:find("All") then
+                                    match = false
+                                    if parentModel then
+                                        local rAttr = parentModel:GetAttribute("Rarity") or parentModel:GetAttribute("Mutation") or ""
+                                        if tostring(rAttr):lower():find(targetFilter:lower()) or parentModel.Name:lower():find(targetFilter:lower()) then
+                                            match = true
+                                        end
+                                    end
+                                end
+                                
+                                if match then
+                                    local targetPart = obj.Parent
+                                    if targetPart and targetPart:IsA("BasePart") then
+                                        hrp.CFrame = targetPart.CFrame + Vector3.new(0, 3, 0)
+                                        task.wait(0.2)
+                                        fireproximityprompt(obj)
+                                        task.wait(0.2)
+                                        hrp.CFrame = basePos
+                                        collected = true
+                                        task.wait(0.5)
+                                        break
+                                    end
+                                end
+                            end
+                        end
+                        
+                        if not collected then
+                            task.wait(1)
+                        end
+                    end
+                end)
+                task.wait(0.3)
+            end
+        end)
+    else
+        CircleToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30,
